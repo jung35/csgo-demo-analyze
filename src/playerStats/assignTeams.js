@@ -17,7 +17,7 @@ module.exports = ({ demoFile, demo_info, match_status }) => {
   }
 
   demoFile.entities.players.map((player) => {
-    if (!player.team) {
+    if (!player.team || player.isFakePlayer) {
       return;
     }
 
