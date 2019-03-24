@@ -3,49 +3,51 @@ const workers = workerFarm(require.resolve("./reader.js"));
 
 const fs = require("fs");
 
-const stats = {};
-
 const root_path = `${__dirname}/../`;
-const folder = "demos/";
+const demo_folder = "demos/";
+const data_folder = "match_datas/";
 
-const files = fs.readdirSync(root_path + folder);
+const files = fs.readdirSync(root_path + demo_folder);
 const files_length = files.length;
 
 let i = 0;
 
+fs.mkdir(root_path + data_folder, { recursive: true }, (err) => {
+  if (err) {
+    throw err;
+  }
+});
+
+const demo_list = [];
+
 files.map((filename) => {
-  workers(root_path + folder + filename, function(err, local_stats) {
-    if (err) {
-      i++;
-      console.log("error", err);
+  const without_ext = filename
+    .split(".")
+    .slice(0, -1)
+    .join(".");
 
-      return;
-    }
+  const demo_file_path = root_path + demo_folder + filename;
+  const data_file_path = root_path + data_folder + without_ext + ".json";
 
-    Object.keys(local_stats).map((player) => {
-      if (!stats[player]) {
-        stats[player] = {};
-      }
-
-      Object.keys(local_stats[player]).map((player_stats) => {
-        if (!stats[player][player_stats]) {
-          stats[player][player_stats] = 0;
-        }
-
-        stats[player][player_stats] += local_stats[player][player_stats];
-      });
-    });
-
+  workers({ demo_file_path, data_file_path }, function(sneak_peek) {
     i++;
 
     console.log(`PROGRESS: ${i}/${files_length} [${((i * 100.0) / files_length).toFixed(2)} %]`);
 
-    if (i == files_length) {
-      console.log("\n\nEND DEMOS\n\nwriting to ./demo_stats.json");
+    demo_list.push({
+      data_file: without_ext + ".json",
+      ...sneak_peek,
+    });
 
-      fs.writeFile(`${root_path}/demo_stats.json`, JSON.stringify(stats), "utf8", () =>
+    if (i == files_length) {
+      const demos_list = root_path + data_folder + "list.json";
+
+      console.log(`\n\nEND DEMOS\n\nwriting to ${demos_list}`);
+
+      fs.writeFile(demos_list, JSON.stringify(demo_list), "utf8", () =>
         console.log("\n\nfinished writing")
       );
+
       workerFarm.end(workers);
     }
   });

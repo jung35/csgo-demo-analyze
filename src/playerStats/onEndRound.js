@@ -2,7 +2,7 @@ const initStats = require("./initStats");
 
 let timer = 0;
 
-const onRoundEnd = (demoFile, match_status, watch_players, stats) => {
+const onRoundEnd = (demoFile, match_status, stats) => {
   demoFile.gameEvents.on("round_end", () => {
     timer = demoFile.currentTime;
   });

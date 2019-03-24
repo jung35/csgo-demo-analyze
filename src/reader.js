@@ -1,61 +1,131 @@
 const fs = require("fs");
 const demofile = require("demofile");
 
-const watchPlayers = require("./watchPlayers");
-const playerStats = require("./playerStats");
 const lo3 = require("./lo3");
 
-const player_steam65Ids = [
-  "76561198020317127", // jung
-  "76561198162875654", // tony
-  "76561197993761807", // peter
-  "76561198033939559", // mike
-  "76561198035140517", // jinswag
-  "76561198038246134", // sunny
-  "76561197987777797", // dennis
-  "76561198044967635", // henry
-  "76561198018221215", // will
-];
+const newRound = require("./playerStats/newRound");
 
-module.exports = function(filename, callback) {
-  console.log(`[${process.pid}] STARTING:`, filename);
+const assignTeams = require("./playerStats/assignTeams");
+const onPlayerDeath = require("./playerStats/onPlayerDeath");
+const playerEntryKill = require("./playerStats/playerEntryKill");
+const playerDoObjective = require("./playerStats/playerDoObjective");
+// const onPlayerBlind = require("./playerStats/onPlayerBlind");
+// const onRoundEnd = require("./playerStats/onEndRound");
 
-  fs.readFile(filename, (err, buffer) => {
-    const local_stats = {};
-    const watch_players = {};
-    const match_status = { started: false, count: 0 };
+module.exports = function({ demo_file_path, data_file_path }, callback) {
+  console.log(`[${process.pid}] STARTING:`, demo_file_path);
+
+  fs.readFile(demo_file_path, (err, buffer) => {
+    const match_status = { started: false, count: 0, got_players: false };
+    const demo_info = {
+      date: fs.statSync(demo_file_path).birthtime,
+      map: null,
+      team1_name: null,
+      team2_name: null,
+      team1_players: {},
+      team2_players: {},
+      rounds: [],
+      rounds_end: [],
+    };
+
+    // new data every new round
+    let round_data = null;
+
+    // garbage data to be stored and refreshed each round
+    let tmp_round = {};
+
     const demoFile = new demofile.DemoFile();
 
-    lo3(demoFile, match_status);
+    // onPlayerDeath(demoFile, match_status, local_stats);
+    // onPlayerBlind(demoFile, match_status, local_stats);
+    // onRoundEnd(demoFile, match_status, local_stats);
 
-    watchPlayers(demoFile, player_steam65Ids, watch_players);
-    playerStats(demoFile, match_status, watch_players, local_stats);
+    demoFile.gameEvents.on("round_start", () => {
+      tmp_round = {};
+
+      if (!match_status.started) {
+        lo3.onRoundStart({ match_status });
+
+        // check to see if lo3 happened
+        if (!match_status.started) {
+          return;
+        }
+      }
+
+      if (!match_status.got_players) {
+        assignTeams({ demoFile, match_status, demo_info });
+      }
+
+      round_data = newRound(demoFile);
+    });
+
+    demoFile.gameEvents.on("round_end", (evt) => {
+      if (!match_status.started) {
+        lo3.onRoundEnd({ match_status });
+
+        return;
+      }
+
+      round_data.winner = demoFile.teams[evt.winner].clanName;
+      round_data.round_end_time = demoFile.currentTime;
+
+      demo_info.rounds.push(round_data); // save round
+
+      round_data = newRound(demoFile);
+    });
+
+    demoFile.gameEvents.on("round_officially_ended", () => {
+      if (!match_status.started) {
+        return;
+      }
+
+      round_data.round_end_time = demoFile.currentTime;
+      demo_info.rounds_end.push(round_data); // save data after round ends
+    });
+
+    demoFile.gameEvents.on("player_death", (evt) => {
+      if (!match_status.started) {
+        return;
+      }
+
+      onPlayerDeath({ demoFile, round_data }, evt);
+      playerEntryKill.onPlayerDeath({ demoFile, round_data, tmp_round }, evt);
+    });
+
+    demoFile.gameEvents.on("bomb_defused", (evt) => {
+      if (!match_status.started) {
+        return;
+      }
+
+      playerDoObjective({ demoFile, round_data }, evt);
+    });
+
+    demoFile.gameEvents.on("bomb_planted", (evt) => {
+      if (!match_status.started) {
+        return;
+      }
+      playerDoObjective({ demoFile, round_data }, evt);
+    });
 
     demoFile.on("start", () => {
       console.log(`[${process.pid}] start buffer`);
+
+      demo_info.map = demoFile.header.mapName;
     });
 
     demoFile.on("end", () => {
-      // Object.keys(local_stats).map((player) => {
-      //   if (!stats[player]) {
-      //     stats[player] = {};
-      //   }
+      console.log(`[${process.pid}] DEMO SAVING`);
 
-      //   Object.keys(local_stats[player]).map((player_stats) => {
-      //     if (!stats[player][player_stats]) {
-      //       stats[player][player_stats] = 0;
-      //     }
+      fs.writeFile(data_file_path, JSON.stringify(demo_info), "utf8", () => {
+        console.log(`[${process.pid}] DEMO DONE`);
 
-      //     stats[player][player_stats] += local_stats[player][player_stats];
-      //   });
-      // });
+        delete demo_info.rounds;
+        delete demo_info.rounds_end;
 
-      console.log(`[${process.pid}] DEMO DONE`);
-
-      callback(null, local_stats);
+        callback(demo_info);
+      });
     });
 
     demoFile.parse(buffer);
   });
-  // callback(null, input + " BAR (" + process.pid + ")");
 };

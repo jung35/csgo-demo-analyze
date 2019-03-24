@@ -1,6 +1,6 @@
 const initStats = require("./initStats");
 
-const onPlayerBlind = (demoFile, match_status, watch_players, stats) => {
+const onPlayerBlind = (demoFile, match_status, stats) => {
   demoFile.gameEvents.on("player_blind", ({ userid, attacker, blind_duration }) => {
     if (!match_status.started) {
       return;
@@ -16,56 +16,44 @@ const onPlayerBlind = (demoFile, match_status, watch_players, stats) => {
       return;
     }
 
-    if (!watch_players[flasher.steam64Id] && !watch_players[blind.steam64Id]) {
-      return; // nothing to look at
-    }
-
     if (flasher.teamNumber === blind.teamNumber) {
       // team flash
-      if (watch_players[flasher.steam64Id]) {
-        const steam64Id = flasher.steam64Id;
+      const flasher_steam64Id = flasher.steam64Id;
 
-        if (!stats[steam64Id]) {
-          stats[steam64Id] = initStats();
-        }
-
-        stats[steam64Id].teammates_flashed++;
-        stats[steam64Id].teammates_flashed_duration += blind_duration;
+      if (!stats[flasher_steam64Id]) {
+        stats[flasher_steam64Id] = initStats();
       }
 
-      if (watch_players[blind.steam64Id]) {
-        const steam64Id = blind.steam64Id;
+      stats[flasher_steam64Id].teammates_flashed++;
+      stats[flasher_steam64Id].teammates_flashed_duration += blind_duration;
 
-        if (!stats[steam64Id]) {
-          stats[steam64Id] = initStats();
-        }
+      const blind_steam64Id = blind.steam64Id;
 
-        stats[steam64Id].flashed_by_teammates++;
-        stats[steam64Id].flashed_by_teammates_duration += blind_duration;
+      if (!stats[blind_steam64Id]) {
+        stats[blind_steam64Id] = initStats();
       }
+
+      stats[blind_steam64Id].flashed_by_teammates++;
+      stats[blind_steam64Id].flashed_by_teammates_duration += blind_duration;
     } else {
       // enemy flash
-      if (watch_players[flasher.steam64Id]) {
-        const steam64Id = flasher.steam64Id;
+      const flasher_steam64Id = flasher.steam64Id;
 
-        if (!stats[steam64Id]) {
-          stats[steam64Id] = initStats();
-        }
-
-        stats[steam64Id].enemies_flashed++;
-        stats[steam64Id].enemies_flashed_duration += blind_duration;
+      if (!stats[flasher_steam64Id]) {
+        stats[flasher_steam64Id] = initStats();
       }
 
-      if (watch_players[blind.steam64Id]) {
-        const steam64Id = blind.steam64Id;
+      stats[flasher_steam64Id].enemies_flashed++;
+      stats[flasher_steam64Id].enemies_flashed_duration += blind_duration;
 
-        if (!stats[steam64Id]) {
-          stats[steam64Id] = initStats();
-        }
+      const blind_steam64Id = blind.steam64Id;
 
-        stats[steam64Id].flashed_by_enemies++;
-        stats[steam64Id].flashed_by_enemies_duration += blind_duration;
+      if (!stats[blind_steam64Id]) {
+        stats[blind_steam64Id] = initStats();
       }
+
+      stats[blind_steam64Id].flashed_by_enemies++;
+      stats[blind_steam64Id].flashed_by_enemies_duration += blind_duration;
     }
   });
 };

@@ -1,64 +1,60 @@
-const initStats = require("./initStats");
+const newRoundPlayer = require("./newRoundPlayer");
 
-const onPlayerDeath = (demoFile, match_status, watch_players, stats) => {
-  demoFile.gameEvents.on("player_death", ({ userid, attacker, assister, weapon, headshot }) => {
-    if (!match_status.started || weapon === "world" || weapon === "worldspawn") {
-      return;
-    }
+module.exports = ({ demoFile, round_data }, evt) => {
+  const { userid, attacker, assister, weapon, headshot } = evt;
 
-    const killer = demoFile.entities.getByUserId(attacker);
-    const dead = demoFile.entities.getByUserId(userid);
-    const assist = assister ? demoFile.entities.getByUserId(assister) : {};
+  if (weapon === "world" || weapon === "worldspawn") {
+    return;
+  }
 
-    if (!killer) {
-      console.log("\n\n\n|", attacker, "|", weapon, "|\n\n\n");
-    }
+  // console.log("evt", evt);
 
-    // record kills
-    if (watch_players[killer.steam64Id]) {
-      const steam64Id = killer.steam64Id;
+  const killer = demoFile.entities.getByUserId(attacker);
+  const dead = demoFile.entities.getByUserId(userid);
+  const assist = assister ? demoFile.entities.getByUserId(assister) : {};
 
-      if (!stats[steam64Id]) {
-        stats[steam64Id] = initStats();
-      }
+  if (!killer) {
+    console.log("\n\n\n|", attacker, "|", weapon, "|\n\n\n");
+  }
 
-      if (!stats[steam64Id][`wp_${weapon}`]) {
-        stats[steam64Id][`wp_${weapon}`] = 0;
-        stats[steam64Id][`wp_${weapon}_hs`] = 0;
-      }
+  // record kills
+  const killer_steam64Id = killer.steam64Id;
 
-      stats[steam64Id].temp_kills++;
-      stats[steam64Id].kills++;
-      stats[steam64Id][`wp_${weapon}`]++;
+  if (!round_data.players[killer_steam64Id]) {
+    round_data.players[killer_steam64Id] = newRoundPlayer();
+  }
 
-      if (headshot) {
-        stats[steam64Id].headshots++;
-        stats[steam64Id][`wp_${weapon}_hs`]++;
-      }
-    }
+  if (!round_data.players[killer_steam64Id][`wp_${weapon}`]) {
+    round_data.players[killer_steam64Id][`wp_${weapon}`] = 0;
+    round_data.players[killer_steam64Id][`wp_${weapon}_hs`] = 0;
+  }
 
+  round_data.players[killer_steam64Id].kills++;
+  round_data.players[killer_steam64Id][`wp_${weapon}`]++;
+
+  if (headshot) {
+    round_data.players[killer_steam64Id].headshots++;
+    round_data.players[killer_steam64Id][`wp_${weapon}_hs`]++;
+  }
+
+  if (assist) {
     // record assist
-    if (watch_players[assist.steam64Id]) {
-      const steam64Id = assist.steam64Id;
+    const assist_steam64Id = assist.steam64Id;
 
-      if (!stats[steam64Id]) {
-        stats[steam64Id] = initStats();
-      }
-
-      stats[steam64Id].assists++;
+    if (!round_data.players[assist_steam64Id]) {
+      round_data.players[assist_steam64Id] = newRoundPlayer();
     }
 
-    //record deaths
-    if (watch_players[dead.steam64Id]) {
-      const steam64Id = dead.steam64Id;
+    round_data.players[assist_steam64Id].assists++;
+  }
 
-      if (!stats[steam64Id]) {
-        stats[steam64Id] = initStats();
-      }
+  //record deaths
+  const dead_steam64Id = dead.steam64Id;
 
-      stats[steam64Id].deaths++;
-    }
-  });
+  if (!round_data.players[dead_steam64Id]) {
+    round_data.players[dead_steam64Id] = newRoundPlayer();
+  }
+
+  round_data.players[dead_steam64Id].time_alive =
+    demoFile.currentTime - round_data.round_start_time;
 };
-
-module.exports = onPlayerDeath;
