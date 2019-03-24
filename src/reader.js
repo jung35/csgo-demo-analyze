@@ -9,8 +9,8 @@ const assignTeams = require("./playerStats/assignTeams");
 const onPlayerDeath = require("./playerStats/onPlayerDeath");
 const playerEntryKill = require("./playerStats/playerEntryKill");
 const playerDoObjective = require("./playerStats/playerDoObjective");
-// const onPlayerBlind = require("./playerStats/onPlayerBlind");
-// const onRoundEnd = require("./playerStats/onEndRound");
+const onRoundEnd = require("./playerStats/onEndRound");
+const playerClutchRound = require("./playerStats/playerClutchRound");
 
 module.exports = function({ demo_file_path, data_file_path }, callback) {
   console.log(`[${process.pid}] STARTING:`, demo_file_path);
@@ -35,10 +35,6 @@ module.exports = function({ demo_file_path, data_file_path }, callback) {
     let tmp_round = {};
 
     const demoFile = new demofile.DemoFile();
-
-    // onPlayerDeath(demoFile, match_status, local_stats);
-    // onPlayerBlind(demoFile, match_status, local_stats);
-    // onRoundEnd(demoFile, match_status, local_stats);
 
     demoFile.gameEvents.on("round_start", () => {
       tmp_round = {};
@@ -68,6 +64,7 @@ module.exports = function({ demo_file_path, data_file_path }, callback) {
 
       round_data.winner = demoFile.teams[evt.winner].clanName;
       round_data.round_end_time = demoFile.currentTime;
+      onRoundEnd({ demoFile, round_data, demo_info });
 
       demo_info.rounds.push(round_data); // save round
 
@@ -80,6 +77,8 @@ module.exports = function({ demo_file_path, data_file_path }, callback) {
       }
 
       round_data.round_end_time = demoFile.currentTime;
+      onRoundEnd({ demoFile, round_data, demo_info });
+
       demo_info.rounds_end.push(round_data); // save data after round ends
     });
 
@@ -90,6 +89,7 @@ module.exports = function({ demo_file_path, data_file_path }, callback) {
 
       onPlayerDeath({ demoFile, round_data }, evt);
       playerEntryKill.onPlayerDeath({ demoFile, round_data, tmp_round }, evt);
+      playerClutchRound.onPlayerDeath({ demoFile, round_data, tmp_round }, evt);
     });
 
     demoFile.gameEvents.on("bomb_defused", (evt) => {

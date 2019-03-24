@@ -9,5 +9,15 @@ module.exports = () => ({
   objective: false,
 
   entry: false,
+  entry_time: null,
   entry_weapon: null,
+
+  first_blood: false,
+  first_blood_time: null,
+
+  "1v1": false,
+  "1v2": false,
+  "1v3": false,
+  "1v4": false,
+  "1v5": false,
 });

@@ -10,9 +10,9 @@ module.exports = ({ demoFile, round_data }, { userid }) => {
 
   const steam64Id = player.steam64Id;
 
-  if (!round_data[steam64Id]) {
-    round_data[steam64Id] = newRoundPlayer();
+  if (!round_data.players[steam64Id]) {
+    round_data.players[steam64Id] = newRoundPlayer();
   }
 
-  round_data[steam64Id].objective = true;
+  round_data.players[steam64Id].objective = true;
 };
