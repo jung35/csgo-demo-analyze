@@ -29,7 +29,7 @@ files.map((filename) => {
   const demo_file_path = root_path + demo_folder + filename;
   const data_file_path = root_path + data_folder + without_ext + ".json";
 
-  workers({ demo_file_path, data_file_path }, function(sneak_peek) {
+  workers({ demo_file_path, data_file_path }, function (sneak_peek) {
     i++;
 
     console.log(`PROGRESS: ${i}/${files_length} [${((i * 100.0) / files_length).toFixed(2)} %]`);
